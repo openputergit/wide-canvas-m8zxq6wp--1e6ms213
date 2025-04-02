@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediVault - Personal Health Records</title>
+    <script src="https://unpkg.com/three@0.139.2/build/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f9ff;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        #threejs-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <canvas id="threejs-bg"></canvas>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center p-4">
+        <div class="glass-effect p-8 rounded-xl w-full max-w-md">
+            <h2 class="text-3xl font-bold text-center mb-8 text-blue-800">MediVault Login</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" required class="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" required class="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden min-h-screen">
+        <nav class="bg-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <span class="text-2xl font-bold text-blue-800">MediVault</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="logoutBtn" class="text-gray-600 hover:text-gray-800">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+            <!-- Personal Profile -->
+            <div class="glass-effect p-6 rounded-xl">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="bi bi-person-circle mr-2"></i> Personal Profile
+                </h3>
+                <div class="space-y-2">
+                    <p><strong>Name:</strong> <span id="patientName">John Doe</span></p>
+                    <p><strong>Age:</strong> <span id="patientAge">35</span></p>
+                    <p><strong>Blood Type:</strong> <span id="bloodType">O+</span></p>
+                    <button onclick="editProfile()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Edit Profile
+                    </button>
+                </div>
+            </div>
+
+            <!-- Medical Records -->
+            <div class="glass-effect p-6 rounded-xl">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="bi bi-journal-medical mr-2"></i> Medical Records
+                </h3>
+                <div id="medicalRecords" class="space-y-2">
+                    <!-- Records will be dynamically added here -->
+                </div>
+                <button onclick="addRecord()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    Add Record
+                </button>
+            </div>
+
+            <!-- Appointments -->
+            <div class="glass-effect p-6 rounded-xl">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="bi bi-calendar-check mr-2"></i> Upcoming Appointments
+                </h3>
+                <div id="appointments" class="space-y-2">
+                    <!-- Appointments will be dynamically added here -->
+                </div>
+                <button onclick="scheduleAppointment()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    Schedule Appointment
+                </button>
+            </div>
+
+            <!-- Family Profiles -->
+            <div class="glass-effect p-6 rounded-xl">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="bi bi-people mr-2"></i> Family Profiles
+                </h3>
+                <div id="familyProfiles" class="space-y-2">
+                    <!-- Family profiles will be dynamically added here -->
+                </div>
+                <button onclick="addFamilyMember()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    Add Family Member
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Three.js Background
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#threejs-bg'), alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const geometry = new THREE.IcosahedronGeometry(1, 1);
+        const material = new THREE.MeshBasicMaterial({ color: 0x0066cc, wireframe: true });
+        const sphere = new THREE.Mesh(geometry, material);
+        scene.add(sphere);
+
+        camera.position.z = 5;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            sphere.rotation.x += 0.001;
+            sphere.rotation.y += 0.001;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Login Handler
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+        });
+
+        // Logout Handler
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('hidden');
+        });
+
+        // Sample Data Management
+        let medicalRecords = [];
+        let appointments = [];
+        let familyMembers = [];
+
+        function editProfile() {
+            // Implementation for editing profile
+            alert('Edit profile functionality will be implemented here');
+        }
+
+        function addRecord() {
+            const record = {
+                date: new Date().toLocaleDateString(),
+                description: prompt('Enter medical record description:')
+            };
+            if (record.description) {
+                medicalRecords.push(record);
+                updateRecordsDisplay();
+            }
+        }
+
+        function scheduleAppointment() {
+            const appointment = {
+                date: prompt('Enter appointment date (MM/DD/YYYY):'),
+                doctor: prompt('Enter doctor name:'),
+                purpose: prompt('Enter appointment purpose:')
+            };
+            if (appointment.date && appointment.doctor && appointment.purpose) {
+                appointments.push(appointment);
+                updateAppointmentsDisplay();
+            }
+        }
+
+        function addFamilyMember() {
+            const member = {
+                name: prompt('Enter family member name:'),
+                relation: prompt('Enter relation:')
+            };
+            if (member.name && member.relation) {
+                familyMembers.push(member);
+                updateFamilyDisplay();
+            }
+        }
+
+        function updateRecordsDisplay() {
+            const recordsDiv = document.getElementById('medicalRecords');
+            recordsDiv.innerHTML = medicalRecords.map(record => `
+                <div class="p-2 bg-white rounded shadow-sm">
+                    <p class="text-sm">${record.date}: ${record.description}</p>
+                </div>
+            `).join('');
+        }
+
+        function updateAppointmentsDisplay() {
+            const appointmentsDiv = document.getElementById('appointments');
+            appointmentsDiv.innerHTML = appointments.map(apt => `
+                <div class="p-2 bg-white rounded shadow-sm">
+                    <p class="text-sm"><strong>${apt.date}</strong></p>
+                    <p class="text-sm">Dr. ${apt.doctor}</p>
+                    <p class="text-sm text-gray-600">${apt.purpose}</p>
+                </div>
+            `).join('');
+        }
+
+        function updateFamilyDisplay() {
+            const familyDiv = document.getElementById('familyProfiles');
+            familyDiv.innerHTML = familyMembers.map(member => `
+                <div class="p-2 bg-white rounded shadow-sm">
+                    <p class="text-sm"><strong>${member.name}</strong> - ${member.relation}</p>
+                </div>
+            `).join('');
+        }
+
+        // Window resize handler for Three.js
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
